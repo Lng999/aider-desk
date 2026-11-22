@@ -194,7 +194,9 @@ jobs:
         if: steps.app-check.outputs.exists == 'false'
         env:
           POSTHOG_PUBLIC_API_KEY: ${{ secrets.POSTHOG_PUBLIC_API_KEY }}
-        run: bash packages/app/build.sh
+        run: |
+          export PATH="$PWD/node_modules/.bin:$PWD/packages/app/node_modules/.bin:$PATH"
+          bash packages/app/build.sh
 
       - name: Publish app package
         if: steps.app-check.outputs.exists == 'false'
