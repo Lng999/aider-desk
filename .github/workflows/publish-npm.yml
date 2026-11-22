@@ -222,6 +222,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No version changes to commit"
           else
-            git commit -m "chore(release): @aiderdesk/extensions@$EXT_VERSION, @aiderdesk/aiderdesk@$APP_VERSION"
+            git commit --no-verify -m "chore: updated @aiderdesk/extensions to $EXT_VERSION and @aiderdesk/aiderdesk to $APP_VERSION"
             git push origin "HEAD:${{ github.ref_name }}"
           fi
