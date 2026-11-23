@@ -484,7 +484,7 @@
       "capabilities": [
         "metrics"
       ],
-      "installCount": 129
+      "installCount": 130
     },
     {
       "id": "verifier",
@@ -686,7 +686,7 @@
       "capabilities": [
         "ui"
       ],
-      "installCount": 190
+      "installCount": 191
     },
     {
       "id": "task-scheduler",
