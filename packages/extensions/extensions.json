@@ -63,7 +63,7 @@
       "capabilities": [
         "tools"
       ],
-      "installCount": 22
+      "installCount": 23
     },
     {
       "id": "binary-files",
@@ -147,7 +147,7 @@
       "capabilities": [
         "modes"
       ],
-      "installCount": 141
+      "installCount": 143
     },
     {
       "id": "protected-paths",
@@ -181,7 +181,7 @@
       "capabilities": [
         "optimization"
       ],
-      "installCount": 60
+      "installCount": 61
     },
     {
       "id": "external-rules",
@@ -205,7 +205,7 @@
       "capabilities": [
         "context"
       ],
-      "installCount": 88
+      "installCount": 89
     },
     {
       "id": "learn",
@@ -230,7 +230,7 @@
       "capabilities": [
         "context"
       ],
-      "installCount": 17
+      "installCount": 18
     },
     {
       "id": "sound-notification",
@@ -242,7 +242,7 @@
       "capabilities": [
         "notifications"
       ],
-      "installCount": 44
+      "installCount": 45
     },
     {
       "id": "sandbox",
@@ -455,7 +455,7 @@
         "tools",
         "search"
       ],
-      "installCount": 39
+      "installCount": 40
     },
     {
       "id": "seek",
@@ -497,7 +497,7 @@
         "workflows",
         "ui"
       ],
-      "installCount": 71
+      "installCount": 72
     },
     {
       "id": "bmad",
@@ -686,7 +686,7 @@
       "capabilities": [
         "ui"
       ],
-      "installCount": 192
+      "installCount": 195
     },
     {
       "id": "task-scheduler",
@@ -712,7 +712,7 @@
       "capabilities": [
         "ui"
       ],
-      "installCount": 174
+      "installCount": 175
     },
     {
       "id": "dbx",
@@ -737,7 +737,7 @@
         "ui",
         "commands"
       ],
-      "installCount": 27
+      "installCount": 28
     }
   ]
 }
