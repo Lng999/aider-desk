@@ -27,6 +27,7 @@ import { getSubagentId } from '@common/agent';
 
 import { QueuedPromptsList } from './QueuedPromptsList';
 import { usePromptFieldText } from './usePromptFieldText';
+import { useTypingPlaceholder } from './useTypingPlaceholder';
 import { wordCompletions } from './wordCompletions';
 import { acceptPathSegment } from './acceptPathSegment';
 
@@ -147,6 +148,7 @@ type Props = {
   onModeChanged: (mode: Mode) => void;
   runPrompt: (prompt: string, images?: string[]) => void;
   savePrompt: (prompt: string) => Promise<void>;
+  hasMessages?: boolean;
   showFileDialog: (readOnly: boolean) => void;
   addFiles?: (filePaths: string[], readOnly?: boolean) => void;
   clearMessages: () => void;
@@ -181,6 +183,7 @@ export const PromptField = forwardRef<PromptFieldRef, Props>(
       taskId,
       processing = false,
       isActive = false,
+      hasMessages = false,
       allFiles = [],
       words = [],
       inputHistory = [],
@@ -232,7 +235,6 @@ export const PromptField = forwardRef<PromptFieldRef, Props>(
       });
       setText(text);
     });
-    const [placeholderIndex, setPlaceholderIndex] = useState(1);
     const [historyMenuVisible, setHistoryMenuVisible] = useState(false);
     const [highlightedHistoryItemIndex, setHighlightedHistoryItemIndex] = useState(0);
     const [historyLimit, setHistoryLimit] = useState(HISTORY_MENU_CHUNK_SIZE);
@@ -243,6 +245,16 @@ export const PromptField = forwardRef<PromptFieldRef, Props>(
       args?: string;
     } | null>(null);
     const editorRef = useRef<ReactCodeMirrorRef>(null);
+    const placeholders = useMemo(() => Array.from({ length: PLACEHOLDER_COUNT }, (_, i) => t(`promptField.placeholders.${i}`)), [t]);
+    const questionPlaceholder = question ? t('promptField.questionPlaceholder') : null;
+    const staticPlaceholder = questionPlaceholder ?? (hasMessages ? t('promptField.chatPlaceholder') : null);
+    const { placeholderExtension } = useTypingPlaceholder({
+      editorRef,
+      placeholders,
+      staticPlaceholder,
+      enabled: isActive,
+      hasText: !!text,
+    });
     const [customCommands, extensionCommands] = useCommands(baseDir);
     const skills = useSkills(baseDir, taskId);
     const api = useApi();
@@ -782,7 +794,6 @@ export const PromptField = forwardRef<PromptFieldRef, Props>(
             const images = pastedImages.length > 0 ? pastedImages : undefined;
             void api.runCustomCommand(baseDir, taskId, cmd, args, mode, images);
             prepareForNextPrompt();
-            setPlaceholderIndex(Math.floor(Math.random() * PLACEHOLDER_COUNT));
             return;
           }
 
@@ -792,7 +803,6 @@ export const PromptField = forwardRef<PromptFieldRef, Props>(
             runPrompt(text, images);
             prepareForNextPrompt();
             setPastedImages([]);
-            setPlaceholderIndex(Math.floor(Math.random() * PLACEHOLDER_COUNT));
             return;
           }
 
@@ -828,7 +838,6 @@ export const PromptField = forwardRef<PromptFieldRef, Props>(
           prepareForNextPrompt();
           setPastedImages([]);
         }
-        setPlaceholderIndex(Math.floor(Math.random() * PLACEHOLDER_COUNT));
       }
     }, [
       scrollToBottom,
@@ -855,7 +864,6 @@ export const PromptField = forwardRef<PromptFieldRef, Props>(
         try {
           await savePrompt(text);
           prepareForNextPrompt();
-          setPlaceholderIndex(Math.floor(Math.random() * PLACEHOLDER_COUNT));
         } catch (error) {
           showErrorNotification(t('promptField.saveError', { error: error instanceof Error ? error.message : String(error) }));
         }
@@ -1211,6 +1219,7 @@ export const PromptField = forwardRef<PromptFieldRef, Props>(
     const extensions = useMemo(
       () => [
         EDITOR_THEME_EXTENSION,
+        placeholderExtension,
         promptBehavior.useVimBindings && vimExtension ? vimExtension : keymap.of([]),
         EditorView.lineWrapping,
         EditorView.domEventHandlers({
@@ -1249,6 +1258,7 @@ export const PromptField = forwardRef<PromptFieldRef, Props>(
         promptBehavior.useVimBindings,
         promptBehavior.suggestionMode,
         promptBehavior.suggestionDelay,
+        placeholderExtension,
         vimExtension,
         question,
         historyMenuVisible,
@@ -1351,7 +1361,6 @@ export const PromptField = forwardRef<PromptFieldRef, Props>(
             }, [])}
             onChange={onChange}
             onBlur={handleBlur}
-            placeholder={question ? t('promptField.questionPlaceholder') : t(`promptField.placeholders.${placeholderIndex}`)}
             editable={!disabled}
             spellCheck={false}
             className={clsx(

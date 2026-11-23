@@ -977,6 +977,7 @@ export const TaskView = forwardRef<TaskViewRef, Props>(
                   isEditingLastMessage={editingMessageIndex !== null}
                   canSaveEditedPrompt={canSaveEditedPrompt}
                   isActive={isActive}
+                  hasMessages={displayedMessages.length > 0}
                   allFiles={allFiles}
                   words={autocompletionWords}
                   clearMessages={clearMessages}

@@ -1,5 +1,9 @@
 # Changelog
 
+## [UNRELEASED]
+
+- added animated typing placeholder with workflow-based examples to the prompt field
+
 ## [0.93.0]
 
 - added workspace-section UI component placement for extensions, rendered as a reorderable and hideable section in the workspace sidebar
