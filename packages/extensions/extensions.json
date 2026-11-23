@@ -147,7 +147,7 @@
       "capabilities": [
         "modes"
       ],
-      "installCount": 140
+      "installCount": 141
     },
     {
       "id": "protected-paths",
@@ -218,7 +218,7 @@
         "commands",
         "tools"
       ],
-      "installCount": 117
+      "installCount": 118
     },
     {
       "id": "legacy-system-prompt",
@@ -324,7 +324,7 @@
         "context",
         "commands"
       ],
-      "installCount": 93
+      "installCount": 94
     },
     {
       "id": "context-autocompletion-words",
@@ -349,7 +349,7 @@
         "tools",
         "code-intelligence"
       ],
-      "installCount": 102
+      "installCount": 103
     },
     {
       "id": "plannotator",
@@ -484,7 +484,7 @@
       "capabilities": [
         "metrics"
       ],
-      "installCount": 130
+      "installCount": 131
     },
     {
       "id": "verifier",
@@ -599,7 +599,7 @@
         "tools",
         "search"
       ],
-      "installCount": 99
+      "installCount": 100
     },
     {
       "id": "kanban",
@@ -686,7 +686,7 @@
       "capabilities": [
         "ui"
       ],
-      "installCount": 191
+      "installCount": 192
     },
     {
       "id": "task-scheduler",
@@ -712,7 +712,7 @@
       "capabilities": [
         "ui"
       ],
-      "installCount": 173
+      "installCount": 174
     },
     {
       "id": "dbx",
