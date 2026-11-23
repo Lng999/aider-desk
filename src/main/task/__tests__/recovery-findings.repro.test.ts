@@ -27,7 +27,10 @@ const createJournal = () => {
     deleteAgentExecution: (_project: string, _task: string, id: string) => {
       db.prepare('DELETE FROM journal WHERE id = ?').run(id);
     },
+    touchAgentExecutions: () => undefined,
+    getAgentHeartbeatAt: () => new Map(),
   };
+
   const manager = new DurabilityManager(storage, '/repro', 'task');
   manager.begin({ promptContext: { id: 'root' }, profile: createMockAgentProfile(), mode: 'agent', contextMessages: [], contextFiles: [] });
   return { db, storage, manager };

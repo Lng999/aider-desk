@@ -36,6 +36,7 @@ export class DataManager {
     // The values are validated against an allowlist in constants before reaching here.
     this.db.exec(`PRAGMA journal_mode = ${DB_JOURNAL_MODE}`);
     this.db.exec(`PRAGMA synchronous = ${DB_SYNCHRONOUS}`);
+    this.db.exec('PRAGMA busy_timeout = 5000');
     logger.info('Database pragmas applied', { journalMode: DB_JOURNAL_MODE, synchronous: DB_SYNCHRONOUS });
   }
 
@@ -66,6 +67,7 @@ export class DataManager {
           prompt_context_id TEXT NOT NULL,
           state_json TEXT NOT NULL,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          heartbeat_at DATETIME,
           PRIMARY KEY (project, task_id, prompt_context_id)
         );
 
@@ -99,6 +101,12 @@ export class DataManager {
       this.db.exec('ALTER TABLE messages ADD COLUMN task_id TEXT');
       logger.info("Added 'task_id' column to 'messages' table");
     }
+
+    const journalColumns = this.db.prepare('PRAGMA table_info(agent_execution_journal)').all() as { name: string }[];
+    if (!journalColumns.some((column) => column.name === 'heartbeat_at')) {
+      this.db.exec('ALTER TABLE agent_execution_journal ADD COLUMN heartbeat_at DATETIME');
+      logger.info("Added 'heartbeat_at' column to 'agent_execution_journal' table");
+    }
   }
 
   public getAgentExecutions(project: string, taskId: string): string[] {
@@ -120,6 +128,19 @@ export class DataManager {
     if (start) {
       recordDbWrite('agent_execution', state.length, performance.now() - start);
     }
+  }
+
+  public touchAgentExecutions(project: string, taskId: string): void {
+    this.db.prepare('UPDATE agent_execution_journal SET heartbeat_at = CURRENT_TIMESTAMP WHERE project = ? AND task_id = ?').run(project, taskId);
+  }
+
+  public getAgentHeartbeatAt(project: string, taskId: string): Map<string, number> {
+    const rows = this.db
+      .prepare('SELECT prompt_context_id, heartbeat_at FROM agent_execution_journal WHERE project = ? AND task_id = ?')
+      .all(project, taskId) as { prompt_context_id: string; heartbeat_at: string | null }[];
+    return new Map(
+      rows.filter((row) => row.heartbeat_at !== null).map((row) => [row.prompt_context_id, new Date(row.heartbeat_at!.replace(' ', 'T') + 'Z').getTime()]),
+    );
   }
 
   public deleteAgentExecution(project: string, taskId: string, promptContextId: string): void {

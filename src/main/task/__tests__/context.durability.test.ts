@@ -22,7 +22,10 @@ it('replaces and persists context without cancelling the active execution, but e
     deleteAgentExecution: (_project: string, _task: string, id: string) => {
       rows.delete(id);
     },
+    touchAgentExecutions: vi.fn(),
+    getAgentHeartbeatAt: vi.fn(() => new Map()),
   };
+
   const manager = new DurabilityManager(storage, '/project', 'task');
   manager.begin({ promptContext: { id: 'main' }, profile: createMockAgentProfile(), mode: 'agent', contextMessages: [], contextFiles: [] });
   manager.beginStep('main', 'step');
@@ -102,7 +105,10 @@ it.each(['smart', 'summary'])('keeps manual %s compaction durable and undoable w
     deleteAgentExecution: (_project: string, _task: string, id: string) => {
       rows.delete(id);
     },
+    touchAgentExecutions: vi.fn(),
+    getAgentHeartbeatAt: vi.fn(() => new Map()),
   };
+
   const profile = createMockAgentProfile();
   const manager = new DurabilityManager(storage, '/project', 'task');
   const original: import('@common/types').ContextMessage[] = [

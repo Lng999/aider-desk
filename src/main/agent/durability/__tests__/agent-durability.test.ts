@@ -23,6 +23,8 @@ const createFixture = () => {
     deleteAgentExecution: vi.fn(() => {
       json = undefined;
     }),
+    touchAgentExecutions: vi.fn(),
+    getAgentHeartbeatAt: vi.fn(() => new Map()),
   };
   const durability = new DurabilityManager(storage, '/project', 'task');
   const profile = createMockAgentProfile();

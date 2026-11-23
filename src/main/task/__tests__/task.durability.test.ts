@@ -3,7 +3,7 @@ import { ToolRecoveryMode } from '@common/types';
 
 import { Task } from '../task';
 
-import { DurabilityManager } from '@/agent/durability/durability-manager';
+import { DurabilityManager, LIVENESS_STALE_MS } from '@/agent/durability/durability-manager';
 import { createMockAgentProfile } from '@/__tests__/mocks';
 
 const recoveryFlags = vi.hoisted(() => ({ disabled: false }));
@@ -18,6 +18,7 @@ vi.mock('@/logger');
 
 afterEach(() => {
   recoveryFlags.disabled = false;
+  vi.useRealTimers();
 });
 
 const createFixture = () => {
@@ -30,6 +31,8 @@ const createFixture = () => {
     deleteAgentExecution: vi.fn((_project: string, _task: string, id: string) => {
       rows.delete(id);
     }),
+    touchAgentExecutions: vi.fn(),
+    getAgentHeartbeatAt: vi.fn(() => new Map()),
   };
   const manager = new DurabilityManager(storage, '/project', 'task');
   const profile = createMockAgentProfile();
@@ -88,6 +91,47 @@ describe('Task durability lifecycle', () => {
     expect(storage.deleteAgentExecution).not.toHaveBeenCalled();
     expect(storage.saveAgentExecution).not.toHaveBeenCalled();
     expect(manager.get('root')).toBeDefined();
+  });
+
+  it('skips recovery when another instance is still touching the journal', async () => {
+    vi.useFakeTimers();
+    const { task, fake, manager, storage } = createFixture();
+    const flushCancelled = vi.spyOn(manager, 'flushCancelled');
+    storage.getAgentHeartbeatAt.mockImplementation(() => new Map([['root', Date.now()]]));
+
+    const recovery = Task.prototype.recoverDurableExecutions.call(task);
+    await vi.advanceTimersByTimeAsync(LIVENESS_STALE_MS);
+    await recovery;
+
+    expect(flushCancelled).not.toHaveBeenCalled();
+    expect(fake.runPromptInAgent).not.toHaveBeenCalled();
+    expect(manager.get('root')).toBeDefined();
+  });
+
+  it('recovers a journal that looked fresh but stopped advancing (owner just crashed)', async () => {
+    vi.useFakeTimers();
+    const { task, fake, storage } = createFixture();
+    // Fresh on the first read (owner seemed alive), stale afterwards (owner stopped touching).
+    let freshnessReads = 0;
+    storage.getAgentHeartbeatAt.mockImplementation(() => {
+      freshnessReads++;
+      return new Map([['root', freshnessReads <= 1 ? Date.now() : Date.now() - LIVENESS_STALE_MS - 1]]);
+    });
+
+    const recovery = Task.prototype.recoverDurableExecutions.call(task);
+    await vi.advanceTimersByTimeAsync(LIVENESS_STALE_MS + 1);
+    await recovery;
+
+    expect(fake.runPromptInAgent).toHaveBeenCalledOnce();
+  });
+
+  it('recovers when the journal has gone stale (no other instance touching it)', async () => {
+    const { task, fake, storage } = createFixture();
+    storage.getAgentHeartbeatAt.mockImplementation(() => new Map([['root', Date.now() - LIVENESS_STALE_MS - 60_000]]));
+
+    await Task.prototype.recoverDurableExecutions.call(task);
+
+    expect(fake.runPromptInAgent).toHaveBeenCalledOnce();
   });
 
   it('localizes missing-profile recovery errors without executing the task', async () => {

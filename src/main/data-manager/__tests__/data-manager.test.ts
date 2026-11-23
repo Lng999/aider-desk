@@ -287,4 +287,26 @@ describe('DataManager - Messages', () => {
     expect(dataManager.getAgentExecutions('/other', 'task')).toHaveLength(1);
     expect(dataManager.getAgentExecutions('/project', 'other-task')).toHaveLength(1);
   });
+
+  it('touches and reads journal freshness per prompt context', () => {
+    dataManager.init();
+    dataManager.saveAgentExecution('/project', 'task', 'root', JSON.stringify({ version: 1 }));
+    dataManager.saveAgentExecution('/other', 'task', 'root', JSON.stringify({ version: 1 }));
+    const db = getDb(dataManager);
+
+    // Backdate the rows so a no-op touch could not pass the assertions despite
+    // CURRENT_TIMESTAMP's one-second granularity.
+    db.prepare("UPDATE agent_execution_journal SET updated_at = datetime('now', '-60 seconds')").run();
+
+    dataManager.touchAgentExecutions('/project', 'task');
+    const after = dataManager.getAgentHeartbeatAt('/project', 'task').get('root')!;
+    expect(after).toBeGreaterThan(Date.now() - 5_000);
+    // Touch is scoped to the target task: the other task's row never gets a heartbeat.
+    expect(dataManager.getAgentHeartbeatAt('/other', 'task').get('root')).toBeUndefined();
+    // The heartbeat column is independent of updated_at, which stays backdated.
+    const updatedAtRow = getDb(dataManager).prepare("SELECT updated_at FROM agent_execution_journal WHERE project = '/project' AND task_id = 'task'").get() as {
+      updated_at: string;
+    };
+    expect(new Date(updatedAtRow.updated_at.replace(' ', 'T') + 'Z').getTime()).toBeLessThan(Date.now() - 5_000);
+  });
 });

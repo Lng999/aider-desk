@@ -18,6 +18,8 @@ const createFixture = async () => {
     deleteAgentExecution: vi.fn((_project: string, _task: string, id: string) => {
       rows.delete(id);
     }),
+    touchAgentExecutions: vi.fn(),
+    getAgentHeartbeatAt: vi.fn(() => new Map()),
   };
   const manager = new DurabilityManager(storage, '/project', 'task');
   const profile = createMockAgentProfile();

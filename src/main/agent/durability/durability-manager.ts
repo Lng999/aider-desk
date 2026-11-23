@@ -18,6 +18,8 @@ import {
 import type { ToolSet, LanguageModelCallEndEvent } from 'ai';
 import type { DataManager } from '@/data-manager';
 
+import logger from '@/logger';
+
 enum CallStatus {
   Pending = 'pending',
   Running = 'running',
@@ -86,6 +88,13 @@ export type ReplayCall = {
 // repeatedly crashes the process cannot keep the app from starting.
 const MAX_RECOVERY_ATTEMPTS = 2;
 
+// Liveness signaling for multi-instance setups: while an execution runs, a timer periodically
+// bumps the journal rows' `heartbeat_at`. Another app instance starting up skips recovery for
+// journals that were touched recently, assuming their owner is still running them.
+export const LIVENESS_TICK_MS = 5_000;
+export const LIVENESS_STALE_TICKS = 2;
+export const LIVENESS_STALE_MS = LIVENESS_STALE_TICKS * LIVENESS_TICK_MS;
+
 const interruptedOutput = createToolRecoveryNotice(ToolRecoveryCode.Interrupted);
 const jsonValue = (value: unknown): JSONValue => JSON.parse(JSON.stringify(value ?? null)) as JSONValue;
 
@@ -102,9 +111,13 @@ export class DurabilityManager {
   private executions: Map<string, ExecutionCheckpoint> | undefined;
   private readonly suspended = new Set<string>();
   private readonly discarded = new Set<string>();
+  private livenessTimer?: NodeJS.Timeout;
 
   constructor(
-    private readonly dataManager: Pick<DataManager, 'getAgentExecutions' | 'saveAgentExecution' | 'deleteAgentExecution'>,
+    private readonly dataManager: Pick<
+      DataManager,
+      'getAgentExecutions' | 'saveAgentExecution' | 'deleteAgentExecution' | 'touchAgentExecutions' | 'getAgentHeartbeatAt'
+    >,
     private readonly project: string,
     private readonly taskId: string,
   ) {}
@@ -247,6 +260,34 @@ export class DurabilityManager {
     return [...this.records().values()].filter((execution) => !execution.parentPromptContextId && execution.status === ExecutionStatus.Running);
   }
 
+  getJournalFreshness(): Map<string, number> {
+    return this.dataManager.getAgentHeartbeatAt(this.project, this.taskId);
+  }
+
+  private refreshLiveness(): void {
+    const running = [...this.records().values()].some(
+      (execution) => execution.status === ExecutionStatus.Running && !this.isSuspended(execution.promptContext.id),
+    );
+    if (this.livenessTimer || !running) {
+      return;
+    }
+    this.livenessTimer = setInterval(() => {
+      try {
+        this.dataManager.touchAgentExecutions(this.project, this.taskId);
+      } catch (error) {
+        logger.error('Failed to touch agent execution journal for liveness', { project: this.project, taskId: this.taskId, error });
+      }
+    }, LIVENESS_TICK_MS);
+    this.livenessTimer.unref();
+  }
+
+  private stopLiveness(): void {
+    if (this.livenessTimer) {
+      clearInterval(this.livenessTimer);
+      this.livenessTimer = undefined;
+    }
+  }
+
   begin(input: ExecutionInput): ExecutionCheckpoint {
     if (input.parentPromptContextId && this.isSuspended(input.parentPromptContextId)) {
       this.suspended.add(input.promptContext.id);
@@ -256,11 +297,19 @@ export class DurabilityManager {
     this.runtimeTools.delete(input.promptContext.id);
     const existing = this.get(input.promptContext.id);
     if (existing) {
+      if (existing.status === ExecutionStatus.Running && !this.isSuspended(existing.promptContext.id)) {
+        this.dataManager.touchAgentExecutions(this.project, this.taskId);
+        this.refreshLiveness();
+      }
       return existing;
     }
     const execution: ExecutionCheckpoint = { ...input, version: 1, history: [], status: ExecutionStatus.Running };
     this.save(execution);
     this.records().set(input.promptContext.id, execution);
+    if (!this.isSuspended(input.promptContext.id)) {
+      this.dataManager.touchAgentExecutions(this.project, this.taskId);
+    }
+    this.refreshLiveness();
     return execution;
   }
 
@@ -676,6 +725,9 @@ export class DurabilityManager {
     } else {
       execution.status = ExecutionStatus.Completed;
       this.save(execution);
+      if (![...this.records().values()].some((item) => item.status === ExecutionStatus.Running)) {
+        this.stopLiveness();
+      }
     }
   }
 
@@ -705,9 +757,13 @@ export class DurabilityManager {
         this.save(execution);
       }
     }
+    if (![...this.records().values()].some((execution) => execution.status === ExecutionStatus.Running)) {
+      this.stopLiveness();
+    }
   }
 
   suspend(): void {
+    this.stopLiveness();
     for (const id of this.records().keys()) {
       this.suspended.add(id);
     }
@@ -731,6 +787,9 @@ export class DurabilityManager {
         this.lastCheckpointAt.delete(execution.promptContext.id);
         this.discarded.add(execution.promptContext.id);
       }
+    }
+    if (![...this.records().values()].some((execution) => execution.status === ExecutionStatus.Running)) {
+      this.stopLiveness();
     }
   }
 

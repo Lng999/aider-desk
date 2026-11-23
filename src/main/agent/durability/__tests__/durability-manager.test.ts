@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ContextMessage, ToolRecoveryMode } from '@common/types';
 
-import { DurabilityManager } from '../durability-manager';
+import { DurabilityManager, LIVENESS_TICK_MS } from '../durability-manager';
 
 import { createMockAgentProfile } from '@/__tests__/mocks';
 
@@ -18,6 +18,8 @@ const createStorage = () => {
     deleteAgentExecution: vi.fn((project: string, task: string, id: string) => {
       rows.delete(project + ':' + task + ':' + id);
     }),
+    touchAgentExecutions: vi.fn(),
+    getAgentHeartbeatAt: vi.fn(() => new Map()),
   };
 };
 
@@ -426,4 +428,68 @@ it('does not substitute raw nested output when its finalized model representatio
   const messages = await manager.recoverStep('root', vi.fn());
   expect(JSON.stringify(messages)).not.toContain('PRIVATE_WITHOUT_MODEL_REPRESENTATION');
   expect(JSON.stringify(messages)).toContain('finalizationInterrupted');
+});
+
+describe('DurabilityManager liveness ticker', () => {
+  let storage: ReturnType<typeof createStorage>;
+  let manager: DurabilityManager;
+  const profile = createMockAgentProfile();
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    storage = createStorage();
+    manager = new DurabilityManager(storage, '/project', 'task');
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('touches the journal periodically while an execution runs', () => {
+    manager.begin({ promptContext: { id: 'root' }, profile, mode: 'agent', contextMessages: [], contextFiles: [] });
+    storage.touchAgentExecutions.mockClear();
+    vi.advanceTimersByTime(3 * LIVENESS_TICK_MS);
+    expect(storage.touchAgentExecutions).toHaveBeenCalledTimes(3);
+  });
+
+  it('stops touching on suspend', () => {
+    manager.begin({ promptContext: { id: 'root' }, profile, mode: 'agent', contextMessages: [], contextFiles: [] });
+    manager.suspend();
+    storage.touchAgentExecutions.mockClear();
+    vi.advanceTimersByTime(3 * LIVENESS_TICK_MS);
+    expect(storage.touchAgentExecutions).not.toHaveBeenCalled();
+  });
+
+  it('stops touching on cancel of the last running execution', () => {
+    manager.begin({ promptContext: { id: 'root' }, profile, mode: 'agent', contextMessages: [], contextFiles: [] });
+    manager.markCancelled();
+    storage.touchAgentExecutions.mockClear();
+    vi.advanceTimersByTime(3 * LIVENESS_TICK_MS);
+    expect(storage.touchAgentExecutions).not.toHaveBeenCalled();
+  });
+
+  it('keeps touching while a parent execution runs after a child is cleared', () => {
+    manager.begin({ promptContext: { id: 'root' }, profile, mode: 'agent', contextMessages: [], contextFiles: [] });
+    manager.begin({ promptContext: { id: 'child' }, profile, mode: 'agent', contextMessages: [], contextFiles: [], parentPromptContextId: 'root' });
+    manager.clear('child');
+    storage.touchAgentExecutions.mockClear();
+    vi.advanceTimersByTime(3 * LIVENESS_TICK_MS);
+    expect(storage.touchAgentExecutions).toHaveBeenCalledTimes(3);
+  });
+
+  it('starts touching when begin() re-enters an existing running execution (recovery)', () => {
+    manager.begin({ promptContext: { id: 'root' }, profile, mode: 'agent', contextMessages: [], contextFiles: [] });
+    manager.suspend();
+    manager.begin({ promptContext: { id: 'root' }, profile, mode: 'agent', contextMessages: [], contextFiles: [] });
+    // touched on the new execution and again on re-entry of the recovered one
+    expect(storage.touchAgentExecutions).toHaveBeenCalledTimes(2);
+    storage.touchAgentExecutions.mockClear();
+    vi.advanceTimersByTime(3 * LIVENESS_TICK_MS);
+    expect(storage.touchAgentExecutions).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not touch when no running execution exists', () => {
+    vi.advanceTimersByTime(3 * LIVENESS_TICK_MS);
+    expect(storage.touchAgentExecutions).not.toHaveBeenCalled();
+  });
 });

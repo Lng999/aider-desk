@@ -107,7 +107,7 @@ import {
   WORKTREE_BRANCH_PREFIX,
 } from '@/constants';
 import { Agent, AgentProfileManager, McpConfigManager, McpManager } from '@/agent';
-import { DurabilityManager } from '@/agent/durability/durability-manager';
+import { DurabilityManager, LIVENESS_STALE_MS } from '@/agent/durability/durability-manager';
 import { safeJsonStringify } from '@/agent/utils';
 import { createSubagentPromptContext, findEnabledSubagent, runSubagentTask } from '@/agent/subagent';
 import { Connector } from '@/connector';
@@ -164,6 +164,8 @@ const getTaskFinishedNotificationText = (task: TaskData) => {
 
 export class Task {
   private initialized = false;
+  private recoveryWaitTimer?: NodeJS.Timeout;
+  private cancelRecoveryWait?: () => void;
   private initPromise: Promise<void> | null = null;
   private worktreeSetupPromise: Promise<void> | null = null;
   private connectors: Connector[] = [];
@@ -924,6 +926,8 @@ export class Task {
 
   public async close(clearContext = false, cleanupEmptyTask = true) {
     const track = <T>(stage: string, run: () => T | Promise<T>) => shutdown.track(`task.${stage}`, run, { baseDir: this.project.baseDir, taskId: this.taskId });
+    this.cancelRecoveryWait?.();
+    this.cancelRecoveryWait = undefined;
     this.stopFileWatching();
     if (!this.initialized) {
       return;
@@ -3048,6 +3052,41 @@ export class Task {
 
   public async recoverDurableExecutions(): Promise<void> {
     if (DISABLE_RECOVERY) {
+      return;
+    }
+    // Only touch heartbeat data before recovery: the heartbeat column is advanced exclusively
+    // by the liveness ticker, unlike updated_at which checkpoint repair writes also bump.
+    const isLive = (heartbeatAt: number | undefined) => heartbeatAt !== undefined && Date.now() - heartbeatAt < LIVENESS_STALE_MS;
+    let freshness = this.durabilityManager.getJournalFreshness();
+    if ([...freshness.values()].some(isLive)) {
+      // The journal heartbeat looks fresh, but the owner may have just crashed. Wait out the
+      // staleness window and re-check: a live owner keeps advancing heartbeat_at, a dead one
+      // does not. The wait is unref'd and cancelled by close().
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, LIVENESS_STALE_MS);
+        timer.unref?.();
+        this.recoveryWaitTimer = timer;
+        this.cancelRecoveryWait = () => {
+          clearTimeout(timer);
+          this.recoveryWaitTimer = undefined;
+          resolve();
+        };
+      });
+      if (!this.recoveryWaitTimer) {
+        return;
+      }
+      this.recoveryWaitTimer = undefined;
+      this.cancelRecoveryWait = undefined;
+      freshness = this.durabilityManager.getJournalFreshness();
+    }
+    const recoverableRoots = this.durabilityManager.getRecoverableRoots();
+    const liveRoots = recoverableRoots.filter((execution) => isLive(freshness.get(execution.promptContext.id)));
+    if (liveRoots.length > 0) {
+      logger.info('Skipping recovery of task executions that appear to be running in another app instance', {
+        baseDir: this.project.baseDir,
+        taskId: this.taskId,
+        executions: liveRoots.map((execution) => execution.promptContext.id),
+      });
       return;
     }
     await this.durabilityManager.flushCancelled(this.persistDurableMessages.bind(this));
