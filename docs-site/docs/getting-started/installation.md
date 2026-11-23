@@ -72,6 +72,18 @@ Or run directly without installing:
 npx @aiderdesk/aiderdesk
 ```
 
+:::note[Installation fails on Linux?]
+On Linux x64, the `onnxruntime-node` dependency downloads an optional CUDA acceleration package (~270 MB) during installation. AiderDesk embeddings run on the CPU and don't need it, but a failed download (firewall, proxy, or offline) aborts the whole installation with an error mentioning `onnxruntime-linux-x64-gpu` and `npm error code 1`. Skip the download with:
+
+```bash
+ONNXRUNTIME_NODE_INSTALL=skip npm install -g @aiderdesk/aiderdesk
+# or
+ONNXRUNTIME_NODE_INSTALL=skip npx @aiderdesk/aiderdesk
+```
+
+See the [npm CLI guide](../advanced/npm-cli.md) for details and a permanent `~/.npmrc` option.
+:::
+
 Then open `http://localhost:24337` in your browser. See the [npm CLI guide](../advanced/npm-cli.md) for all commands, including readonly server mode.
 
 ## Option 3: Docker

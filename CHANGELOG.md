@@ -3,6 +3,7 @@
 ## [UNRELEASED]
 
 - added animated typing placeholder with workflow-based examples to the prompt field
+- updated @huggingface/transformers to 4.3.2 to fix npm installation failures on Linux x64 caused by the broken onnxruntime-node CUDA download, with a documented ONNXRUNTIME_NODE_INSTALL=skip workaround
 
 ## [0.93.0]
 

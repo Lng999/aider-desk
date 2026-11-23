@@ -18,6 +18,8 @@ npm run dev
 
 This will start the Electron app in development mode with hot reload.
 
+> **Linux x64 note:** `onnxruntime-node` downloads an optional CUDA acceleration package from NuGet during install. AiderDesk embeddings run on the CPU, so you can skip it with `ONNXRUNTIME_NODE_INSTALL=skip npm install` if the download fails or is blocked by your network.
+
 ## Project Architecture
 
 AiderDesk is an Electron app with three main processes:

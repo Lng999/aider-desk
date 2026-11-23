@@ -22,27 +22,32 @@ const pruneToBackup = (nodeModulesDir, relPaths, key) => {
 };
 
 const pruneOnnxruntimeNode = (nodeModulesDir, nodePlatformName, nodeArch, key) => {
-  const dirRelative = 'onnxruntime-node/bin/napi-v3';
-  const dir = path.join(nodeModulesDir, dirRelative);
-  if (!fs.existsSync(dir)) return;
+  const binDir = path.join(nodeModulesDir, 'onnxruntime-node/bin');
+  if (!fs.existsSync(binDir)) return;
 
+  // onnxruntime-node may ship binaries under several N-API version dirs (napi-v3, napi-v6, ...); prune them all
+  const apiDirs = fs.readdirSync(binDir).filter((d) => d.startsWith('napi-v') && fs.statSync(path.join(binDir, d)).isDirectory());
   const pruned = [];
-  for (const platformDir of fs.readdirSync(dir)) {
-    if (!fs.statSync(path.join(dir, platformDir)).isDirectory()) continue;
-    if (platformDir !== nodePlatformName) {
-      pruned.push(`${dirRelative}/${platformDir}`);
-    } else if (nodeArch) {
-      const platformDirPath = path.join(dir, platformDir);
-      for (const archDir of fs.readdirSync(platformDirPath)) {
-        if (archDir === nodeArch) continue;
-        pruned.push(`${dirRelative}/${platformDir}/${archDir}`);
-      }
-      const archDirPath = path.join(platformDirPath, nodeArch);
-      if (fs.existsSync(archDirPath)) {
-        // CUDA and TensorRT execution providers are loaded dynamically and are not used (embeddings run on CPU); they add ~344MB on linux/x64.
-        for (const file of fs.readdirSync(archDirPath)) {
-          if (file.includes('providers_cuda') || file.includes('providers_tensorrt')) {
-            pruned.push(`${dirRelative}/${platformDir}/${nodeArch}/${file}`);
+  for (const apiDir of apiDirs) {
+    const dirRelative = `onnxruntime-node/bin/${apiDir}`;
+    const dir = path.join(binDir, apiDir);
+    for (const platformDir of fs.readdirSync(dir)) {
+      if (!fs.statSync(path.join(dir, platformDir)).isDirectory()) continue;
+      if (platformDir !== nodePlatformName) {
+        pruned.push(`${dirRelative}/${platformDir}`);
+      } else if (nodeArch) {
+        const platformDirPath = path.join(dir, platformDir);
+        for (const archDir of fs.readdirSync(platformDirPath)) {
+          if (archDir === nodeArch) continue;
+          pruned.push(`${dirRelative}/${platformDir}/${archDir}`);
+        }
+        const archDirPath = path.join(platformDirPath, nodeArch);
+        if (fs.existsSync(archDirPath)) {
+          // CUDA and TensorRT execution providers are loaded dynamically and are not used (embeddings run on CPU); they add ~273MB on linux/x64.
+          for (const file of fs.readdirSync(archDirPath)) {
+            if (file.includes('providers_cuda') || file.includes('providers_tensorrt')) {
+              pruned.push(`${dirRelative}/${platformDir}/${nodeArch}/${file}`);
+            }
           }
         }
       }

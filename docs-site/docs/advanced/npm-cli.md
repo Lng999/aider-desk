@@ -30,6 +30,29 @@ npx @aiderdesk/aiderdesk
 
 During installation, the postinstall script automatically downloads the required `uv` Python package manager and `probe` binary for your platform.
 
+:::note[Installation fails on Linux?]
+On Linux x64, the `onnxruntime-node` dependency downloads an optional CUDA acceleration package (~270 MB) from NuGet during installation. AiderDesk embeddings run on the CPU and don't need it, but a failed download (firewall, proxy, or offline) aborts the whole installation with an error like:
+
+```
+npm error Downloading "https://github.com/microsoft/onnxruntime/releases/download/v1.21.0/onnxruntime-linux-x64-gpu-1.21.0.tgz"...
+npm error code 1
+```
+
+Skip the download by prefixing the install command with `ONNXRUNTIME_NODE_INSTALL=skip`:
+
+```bash
+ONNXRUNTIME_NODE_INSTALL=skip npm install -g @aiderdesk/aiderdesk
+# or
+ONNXRUNTIME_NODE_INSTALL=skip npx @aiderdesk/aiderdesk
+```
+
+To make the skip permanent, add the following line to your `~/.npmrc` (edit the file directly — `npm config set` rejects unknown keys):
+
+```ini
+onnxruntime-node-install=skip
+```
+:::
+
 ## Running
 
 ### Interactive TUI (Default)

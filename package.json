@@ -89,7 +89,7 @@
     "@headless-tree/react": "1.7.0",
     "@headlessui/react": "2.2.9",
     "@homebridge/node-pty-prebuilt-multiarch": "0.13.1",
-    "@huggingface/transformers": "3.8.1",
+    "@huggingface/transformers": "4.3.2",
     "@lancedb/lancedb": "0.22.3",
     "@langfuse/otel": "6.1.1",
     "@langfuse/vercel-ai-sdk": "6.1.1",
