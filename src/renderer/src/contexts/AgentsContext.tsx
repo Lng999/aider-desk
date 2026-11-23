@@ -36,9 +36,8 @@ export const AgentsProvider = ({ children }: AgentsProviderProps) => {
       setProfiles(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load agent profiles');
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }, [api]);
 
   const getProfiles = useCallback(

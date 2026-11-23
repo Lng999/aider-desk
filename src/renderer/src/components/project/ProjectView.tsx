@@ -61,7 +61,9 @@ export const ProjectView = ({ projectDir, isProjectActive = false, initialTaskId
   const [storedShowArchived, setShowArchived] = useLocalStorage(`task-sidebar-show-archived-${projectDir}`, false);
   const showArchived = storedShowArchived ?? false;
   const showArchivedRef = useRef(showArchived);
-  showArchivedRef.current = showArchived;
+  useEffect(() => {
+    showArchivedRef.current = showArchived;
+  }, [showArchived]);
   const { TASK_HOTKEYS, PROJECT_HOTKEYS } = useConfiguredHotkeys();
   const { isMobile } = useResponsive();
   const setItemsProvider = useCommandPaletteStore((state) => state.setItemsProvider);
@@ -142,27 +144,28 @@ export const ProjectView = ({ projectDir, isProjectActive = false, initialTaskId
         return;
       }
 
+      const targetParentId = parentId || null;
+      const existingNewTask = tasks.find((task) => !task.createdAt && task.parentId === targetParentId);
+      if (existingNewTask) {
+        if (activeTaskId === existingNewTask.id) {
+          focusActiveTaskPrompt();
+          return;
+        }
+        activateTask(existingNewTask.id);
+        return;
+      }
+
+      const createOptions = parentId ? { parentId } : undefined;
       creatingTaskRef.current = true;
 
       try {
-        const existingNewTask = tasks.find((task) => !task.createdAt && task.parentId === (parentId || null));
-        if (existingNewTask) {
-          if (activeTaskId === existingNewTask.id) {
-            focusActiveTaskPrompt();
-            return;
-          }
-          activateTask(existingNewTask.id);
-          return;
-        }
-
-        const newTask = await api.createNewTask(projectDir, parentId ? { parentId } : undefined);
+        const newTask = await api.createNewTask(projectDir, createOptions);
         activateTask(newTask.id, false, true);
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('Failed to create new task:', error);
-      } finally {
-        creatingTaskRef.current = false;
       }
+      creatingTaskRef.current = false;
     },
     [starting, tasksLoading, tasks, api, projectDir, activateTask, activeTaskId, focusActiveTaskPrompt],
   );
@@ -211,11 +214,9 @@ export const ProjectView = ({ projectDir, isProjectActive = false, initialTaskId
             startupTask = existingNewTask;
           } else if (!creatingTaskRef.current) {
             creatingTaskRef.current = true;
-            try {
-              startupTask = await api.createNewTask(projectDir);
-            } finally {
+            startupTask = await api.createNewTask(projectDir).finally(() => {
               creatingTaskRef.current = false;
-            }
+            });
           }
           break;
         }
@@ -227,11 +228,9 @@ export const ProjectView = ({ projectDir, isProjectActive = false, initialTaskId
               startupTask = existingNewTask;
             } else if (!creatingTaskRef.current) {
               creatingTaskRef.current = true;
-              try {
-                startupTask = await api.createNewTask(projectDir);
-              } finally {
+              startupTask = await api.createNewTask(projectDir).finally(() => {
                 creatingTaskRef.current = false;
-              }
+              });
             }
           }
           break;

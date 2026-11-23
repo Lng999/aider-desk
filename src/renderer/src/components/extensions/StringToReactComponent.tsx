@@ -34,17 +34,14 @@ const loadModule = async (blobUrl: string, react: typeof React): Promise<Compone
 };
 
 const StringToReactComponent = ({ data, babelOptions, children }: StringToReactComponentProps) => {
-  const [, rerender] = useState<object>({});
-  const componentRef = useRef<ComponentType | null>(null);
+  const [Component, setComponent] = useState<ComponentType | null>(null);
   const loadIdRef = useRef(0);
   const resolvedOptions = babelOptions ?? DEFAULT_SUCRASE_OPTIONS;
-  // eslint-disable-next-line react-hooks/refs
-  const Component = componentRef.current;
 
   useEffect(() => {
+    const currentLoadId = ++loadIdRef.current;
+
     if (!children) {
-      componentRef.current = () => null;
-      rerender({});
       return;
     }
 
@@ -52,19 +49,16 @@ const StringToReactComponent = ({ data, babelOptions, children }: StringToReactC
       throw new Error('StringToReactComponent: children must be a string');
     }
 
-    const currentLoadId = ++loadIdRef.current;
-
     let blobUrl: string | undefined;
     try {
       const transpiled = transpileJsxString(children, resolvedOptions);
       blobUrl = createBlobUrl(transpiled);
-      void loadModule(blobUrl, React).then((Component) => {
-        if (typeof Component !== 'function') {
+      void loadModule(blobUrl, React).then((LoadedComponent) => {
+        if (typeof LoadedComponent !== 'function') {
           throw new Error('StringToReactComponent: code inside the passed string must be a function');
         }
         if (currentLoadId === loadIdRef.current) {
-          componentRef.current = Component;
-          rerender({});
+          setComponent(() => LoadedComponent);
         }
       });
     } catch (error) {
@@ -74,8 +68,7 @@ const StringToReactComponent = ({ data, babelOptions, children }: StringToReactC
     }
   }, [children, resolvedOptions]);
 
-  // eslint-disable-next-line react-hooks/refs
-  if (!Component) {
+  if (!children || !Component) {
     return null;
   }
 

@@ -105,6 +105,31 @@ const Line = ({ line }: LineProps) => {
   );
 };
 
+const parseCompactDiffFiles = (udiff?: string, oldValue?: string, newValue?: string, fileName?: string): File[] | null => {
+  try {
+    let diffText = udiff;
+    if (!diffText && oldValue !== undefined && newValue !== undefined) {
+      const name = fileName || 'file';
+      const header = `diff --git a/${name} b/${name}\n`;
+      diffText = header + formatLines(diffLines(oldValue, newValue), { context: 100, aname: `a/${name}`, bname: `b/${name}` });
+    }
+
+    if (diffText) {
+      if (/^(?:diff --(?:cc|combined) |@@@)/m.test(diffText)) {
+        return null;
+      }
+      const parsed = parseDiff(diffText);
+      return parsed.length === 0 ? null : parsed;
+    }
+
+    return [];
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn('Error parsing compact diff:', error);
+    return null;
+  }
+};
+
 export interface CompactDiffViewerProps extends Omit<DiffProps, 'hunks' | 'type'> {
   oldValue?: string;
   newValue?: string;
@@ -133,28 +158,7 @@ export const CompactDiffViewer = ({
       return [{ hunks: providedHunks, type: providedType, newPath: fileName } as File];
     }
 
-    try {
-      let diffText = udiff;
-      if (!diffText && oldValue !== undefined && newValue !== undefined) {
-        const name = fileName || 'file';
-        const header = `diff --git a/${name} b/${name}\n`;
-        diffText = header + formatLines(diffLines(oldValue, newValue), { context: 100, aname: `a/${name}`, bname: `b/${name}` });
-      }
-
-      if (diffText) {
-        if (/^(?:diff --(?:cc|combined) |@@@)/m.test(diffText)) {
-          return null;
-        }
-        const parsed = parseDiff(diffText);
-        return parsed.length === 0 ? null : parsed;
-      }
-
-      return [];
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.warn('Error parsing compact diff:', error);
-      return null;
-    }
+    return parseCompactDiffFiles(udiff, oldValue, newValue, fileName);
   }, [providedHunks, providedType, oldValue, newValue, udiff, fileName]);
 
   if (files === null) {

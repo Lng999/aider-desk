@@ -70,7 +70,7 @@ export const useVirtualizedListActivation = ({ isActive, listRef, itemKeys, scro
       const scroll = scrollOffsetRef.current ?? state.scroll;
       const anchor = anchorRef.current;
       const index = anchor ? itemKeysRef.current.indexOf(anchor.key) : -1;
-      try {
+      const syncScroll = async () => {
         if (!scrollingPausedRef.current) {
           const bottomOffset = getVirtualizedListBottomOffset(element);
           if (Math.abs(element.scrollTop - bottomOffset) > 1 || Math.abs(state.scroll - bottomOffset) > 1) {
@@ -84,7 +84,9 @@ export const useVirtualizedListActivation = ({ isActive, listRef, itemKeys, scro
         } else if (Math.abs(state.scroll - scroll) > 1 || Math.abs(element.scrollTop - scroll) > 1) {
           await list.scrollToOffset({ offset: scroll, animated: false });
         }
-      } finally {
+      };
+
+      await syncScroll().finally(() => {
         if (!cancelled) {
           frame = requestAnimationFrame(() => {
             if (cancelled) {
@@ -96,7 +98,7 @@ export const useVirtualizedListActivation = ({ isActive, listRef, itemKeys, scro
             }
           });
         }
-      }
+      });
     };
     frame = requestAnimationFrame(() => void restore());
     return () => {

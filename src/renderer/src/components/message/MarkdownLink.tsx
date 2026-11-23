@@ -33,8 +33,13 @@ export const MarkdownLink = ({ href, children, title, baseDir = '', taskId = '' 
       setShowDownload(true);
       return;
     }
+    if (!api) {
+      showErrorNotification(t('fileLink.openError'));
+      return;
+    }
     try {
-      if (!api || !(await api.openPath(filePath))) {
+      const opened = await api.openPath(filePath);
+      if (!opened) {
         showErrorNotification(t('fileLink.openError'));
       }
     } catch {
@@ -58,17 +63,16 @@ export const MarkdownLink = ({ href, children, title, baseDir = '', taskId = '' 
       setShowDownload(false);
     } catch {
       showErrorNotification(t('fileLink.downloadError'));
-    } finally {
-      setDownloading(false);
     }
+    setDownloading(false);
   };
 
   const handleCopyPath = async () => {
-    if (!filePath) {
+    if (!filePath || !api) {
       return;
     }
     try {
-      await api?.writeToClipboard(filePath);
+      await api.writeToClipboard(filePath);
       showInfoNotification(t('messages.copied'));
     } catch {
       showErrorNotification(t('fileLink.copyError'));

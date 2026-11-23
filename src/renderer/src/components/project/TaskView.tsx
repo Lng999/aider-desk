@@ -797,8 +797,9 @@ export const TaskView = forwardRef<TaskViewRef, Props>(
 
     const handleCreateSubtask = useCallback(
       async (args?: string) => {
+        const name = args || undefined;
         try {
-          await api.createNewTask(projectDir, { parentId: task.id, name: args || undefined, activate: true });
+          await api.createNewTask(projectDir, { parentId: task.id, name, activate: true });
         } catch (error) {
           showErrorNotification(error instanceof Error ? error.message : String(error));
         }

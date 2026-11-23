@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, ReactNode, ClipboardEvent, KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, ReactNode, ClipboardEvent, KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { clsx } from 'clsx';
@@ -36,12 +36,39 @@ export const AutocompletionInput = ({
   const { t } = useTranslation();
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [suggestionsPosition, setSuggestionsPosition] = useState<{ top: number; left: number; width: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setShowSuggestions(suggestions.length > 0);
     setSelectedIndex(-1);
   }, [suggestions]);
+
+  useLayoutEffect(() => {
+    if (!showSuggestions || suggestions.length === 0) {
+      return;
+    }
+
+    const updatePosition = () => {
+      const inputRect = inputRef.current?.getBoundingClientRect();
+      if (!inputRect) {
+        return;
+      }
+      setSuggestionsPosition({
+        top: inputRect.bottom + window.scrollY,
+        left: inputRect.left + window.scrollX,
+        width: inputRect.width,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [showSuggestions, suggestions.length, value]);
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (!showSuggestions) {
@@ -124,20 +151,15 @@ export const AutocompletionInput = ({
   };
 
   const renderSuggestions = () => {
-    if (!showSuggestions || suggestions.length === 0) {
-      return null;
-    }
-
-    const inputRect = inputRef.current?.getBoundingClientRect();
-    if (!inputRect) {
+    if (!showSuggestions || suggestions.length === 0 || !suggestionsPosition) {
       return null;
     }
 
     const style = {
       position: 'absolute' as const,
-      top: `${inputRect.bottom + window.scrollY}px`,
-      left: `${inputRect.left + window.scrollX}px`,
-      width: `${inputRect.width}px`,
+      top: `${suggestionsPosition.top}px`,
+      left: `${suggestionsPosition.left}px`,
+      width: `${suggestionsPosition.width}px`,
       zIndex: 1000, // Ensure it's above other elements
     };
 
@@ -193,7 +215,6 @@ export const AutocompletionInput = ({
           onPaste={handleOnPaste}
         />
         {rightElement && <div className="absolute right-2 top-1/2 -translate-y-1/2">{rightElement}</div>}
-        {/* eslint-disable-next-line react-hooks/refs */}
         {renderSuggestions()}
       </div>
     </div>

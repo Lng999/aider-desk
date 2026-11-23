@@ -66,9 +66,8 @@ export const StoreMemoryToolMessage = ({ message, onRemove, compact = false, onF
         setCurrentMemories(new Set(allMemories.map((m) => m.id)));
       } catch {
         // Ignore errors loading memories
-      } finally {
-        setHasLoadedMemories(true);
       }
+      setHasLoadedMemories(true);
     };
     void loadMemories();
   }, [api, message.content]);

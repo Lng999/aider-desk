@@ -32,6 +32,9 @@ const getAncestorIds = (path: string): string[] => {
 };
 
 export const FileEditorFileTree = ({ allFiles, activeFilePath, openFilePaths, onOpenFile }: Props) => {
+  // useTree keeps a mutable instance whose results (tree.getItems(), item.isExpanded())
+  // React Compiler cannot track; opt out explicitly instead of relying on useVirtualizer's skip.
+  'use no memo';
   const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const virtualizerRef = useRef<Virtualizer<HTMLDivElement, Element> | null>(null);

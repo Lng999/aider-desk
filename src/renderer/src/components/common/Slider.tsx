@@ -2,6 +2,16 @@ import { ChangeEvent, CSSProperties, ReactNode } from 'react';
 
 type SliderSize = 'md' | 'sm';
 
+const sizeClasses: Record<SliderSize, string> = {
+  md: 'h-2 mt-4 mb-[9px]',
+  sm: 'h-1 mt-2 mb-[6px]',
+};
+
+const trackerSizeStyles: Record<SliderSize, CSSProperties> = {
+  md: { '--slider-track-height': '8px' } as CSSProperties,
+  sm: { '--slider-track-height': '4px' } as CSSProperties,
+};
+
 type Props = {
   label?: ReactNode;
   min: number;
@@ -18,20 +28,6 @@ type Props = {
 export const Slider = ({ label, min, max, step = 1, value, onChange, className = '', showValue = true, size = 'md', formatValue }: Props) => {
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     onChange(Number(e.target.value));
-  };
-
-  const sizeClasses = {
-    md: 'h-2 mt-4 mb-[9px]',
-    sm: 'h-1 mt-2 mb-[6px]',
-  };
-
-  const trackerSizeStyles: Record<SliderSize, CSSProperties> = {
-    md: {
-      ['--slider-track-height' as keyof CSSProperties]: '8px',
-    },
-    sm: {
-      ['--slider-track-height' as keyof CSSProperties]: '4px',
-    },
   };
 
   return (

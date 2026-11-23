@@ -36,6 +36,9 @@ type TreeProps = SharedRowProps & {
 };
 
 export const Tree = ({ expandedItems, setExpandedItems, scrollContainerRef, treeData, ...shared }: TreeProps) => {
+  // useTree keeps a mutable instance whose results (tree.getItems(), item.isExpanded())
+  // React Compiler cannot track; opt out explicitly instead of relying on useVirtualizer's skip.
+  'use no memo';
   const innerScrollRef = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const virtualizerRef = useRef<Virtualizer<HTMLDivElement, Element> | null>(null);

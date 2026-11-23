@@ -104,9 +104,8 @@ export const Home = () => {
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('Error loading projects:', error);
-      } finally {
-        setProjectsLoaded(true);
       }
+      setProjectsLoaded(true);
     };
 
     void loadProjects();
@@ -155,8 +154,8 @@ export const Home = () => {
   const handleCloseProject = useCallback(
     (projectBaseDir: string) => {
       closingProjectRef.current = projectBaseDir;
-      startTransition(async () => {
-        try {
+      startTransition(() => {
+        const closeProject = async () => {
           const removedIndex = optimisticOpenProjects.findIndex((project) => project.baseDir === projectBaseDir);
           const remaining = optimisticOpenProjects.filter((project) => project.baseDir !== projectBaseDir);
 
@@ -174,9 +173,11 @@ export const Home = () => {
           setOptimisticOpenProjects(remaining);
           const updatedProjects = await api.removeOpenProject(projectBaseDir);
           setOpenProjects(updatedProjects);
-        } finally {
+        };
+
+        return closeProject().finally(() => {
           closingProjectRef.current = null;
-        }
+        });
       });
     },
     [api, optimisticOpenProjects, activeProject, os, setOptimisticOpenProjects, setSearchParams],

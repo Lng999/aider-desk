@@ -46,6 +46,7 @@
     "test:e2e:ui": "playwright test --config e2e/playwright.config.ts --ui",
     "test:e2e:headed": "playwright test --config e2e/playwright.config.ts --headed",
     "test:e2e:debug": "playwright test --config e2e/playwright.config.ts --debug",
+    "audit:compiler": "node scripts/react-compiler-audit.mjs",
     "validate:locales": "node scripts/validate-locales.mjs",
     "validate": "npm-run-all --parallel lint typecheck test:web test:node validate:locales"
   },
@@ -236,7 +237,6 @@
     "eslint-plugin-import": "2.32.0",
     "eslint-plugin-prettier": "5.5.5",
     "eslint-plugin-react": "7.37.5",
-    "eslint-plugin-react-compiler": "19.1.0-rc.2",
     "eslint-plugin-react-hooks": "7.0.1",
     "globals": "15.15.0",
     "husky": "9.1.7",

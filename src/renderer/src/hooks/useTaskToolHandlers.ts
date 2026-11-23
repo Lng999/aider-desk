@@ -6,49 +6,53 @@ import type { TodoItem, ToolData, ToolInputChunkData, ToolMessage } from '@commo
 import { useApi } from '@/contexts/ApiContext';
 import { setMessages, setTodoItems, touchTaskActivity } from '@/stores/taskStore';
 
+const applyTodoToolUpdate = (taskId: string, toolName: string, args: Record<string, unknown> | undefined, response: string | undefined) => {
+  try {
+    switch (toolName) {
+      case TODO_TOOL_SET_ITEMS: {
+        if (args?.items && Array.isArray(args.items)) {
+          setTodoItems(taskId, () => args.items as TodoItem[]);
+        }
+        break;
+      }
+      case TODO_TOOL_GET_ITEMS: {
+        if (response) {
+          try {
+            const parsedResponse = JSON.parse(response);
+            if (parsedResponse.items && Array.isArray(parsedResponse.items)) {
+              setTodoItems(taskId, () => parsedResponse.items);
+            }
+          } catch {
+            if (response.includes('No todo items found')) {
+              setTodoItems(taskId, () => []);
+            }
+          }
+        }
+        break;
+      }
+      case TODO_TOOL_UPDATE_ITEM_COMPLETION: {
+        if (args?.name && typeof args.completed === 'boolean') {
+          setTodoItems(taskId, (prev) => prev.map((item) => (item.name === args.name ? { ...item, completed: args.completed as boolean } : item)));
+        }
+        break;
+      }
+      case TODO_TOOL_CLEAR_ITEMS: {
+        setTodoItems(taskId, () => []);
+        break;
+      }
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Error handling TODO tool:', error);
+  }
+};
+
 export const useTaskToolHandlers = (baseDir: string, taskId: string) => {
   const api = useApi();
 
   const handleTodoTool = useCallback(
     (toolName: string, args: Record<string, unknown> | undefined, response: string | undefined) => {
-      try {
-        switch (toolName) {
-          case TODO_TOOL_SET_ITEMS: {
-            if (args?.items && Array.isArray(args.items)) {
-              setTodoItems(taskId, () => args.items as TodoItem[]);
-            }
-            break;
-          }
-          case TODO_TOOL_GET_ITEMS: {
-            if (response) {
-              try {
-                const parsedResponse = JSON.parse(response);
-                if (parsedResponse.items && Array.isArray(parsedResponse.items)) {
-                  setTodoItems(taskId, () => parsedResponse.items);
-                }
-              } catch {
-                if (response.includes('No todo items found')) {
-                  setTodoItems(taskId, () => []);
-                }
-              }
-            }
-            break;
-          }
-          case TODO_TOOL_UPDATE_ITEM_COMPLETION: {
-            if (args?.name && typeof args.completed === 'boolean') {
-              setTodoItems(taskId, (prev) => prev.map((item) => (item.name === args.name ? { ...item, completed: args.completed as boolean } : item)));
-            }
-            break;
-          }
-          case TODO_TOOL_CLEAR_ITEMS: {
-            setTodoItems(taskId, () => []);
-            break;
-          }
-        }
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('Error handling TODO tool:', error);
-      }
+      applyTodoToolUpdate(taskId, toolName, args, response);
     },
     [taskId],
   );

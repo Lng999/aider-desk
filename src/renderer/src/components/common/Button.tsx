@@ -66,38 +66,34 @@ export const Button = ({
   ref,
   ...buttonProps
 }: Props) => {
-  const renderButton = () => {
-    const baseColorClasses = disabled
-      ? 'bg-bg-tertiary-strong text-text-muted cursor-not-allowed hover:bg-bg-tertiary-strong hover:text-text-muted'
-      : colorClasses[color][variant];
+  const baseColorClasses = disabled
+    ? 'bg-bg-tertiary-strong text-text-muted cursor-not-allowed hover:bg-bg-tertiary-strong hover:text-text-muted'
+    : colorClasses[color][variant];
 
-    const baseSizeClasses = sizeClasses[size];
+  const baseSizeClasses = sizeClasses[size];
 
-    const borderClass = variant === 'outline' && !disabled ? 'border' : '';
+  const borderClass = variant === 'outline' && !disabled ? 'border' : '';
 
-    return (
-      <button
-        {...buttonProps}
-        ref={ref}
-        type={type}
-        onClick={onClick}
-        disabled={disabled}
-        autoFocus={autoFocus}
-        title={title}
-        className={twMerge(
-          'flex items-center space-x-1 rounded-lg font-medium transition-colors select-none',
-          borderClass,
-          baseColorClasses,
-          baseSizeClasses,
-          className,
-        )}
-      >
-        {children}
-      </button>
-    );
-  };
-
-  const button = renderButton();
+  const button = (
+    <button
+      {...buttonProps}
+      ref={ref}
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      autoFocus={autoFocus}
+      title={title}
+      className={twMerge(
+        'flex items-center space-x-1 rounded-lg font-medium transition-colors select-none',
+        borderClass,
+        baseColorClasses,
+        baseSizeClasses,
+        className,
+      )}
+    >
+      {children}
+    </button>
+  );
 
   if (tooltip) {
     return (

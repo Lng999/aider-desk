@@ -138,18 +138,18 @@ export const TaskGitControls = ({
       setShowConfirmLocal(false);
       setShowConfirmWorktree(false);
       setIsSwitching(true);
+      const worktreeOptions = baseBranch ? { baseBranch } : undefined;
       try {
         if (mode === 'local') {
           await api.switchToLocalWorkingMode(task.baseDir, task.id, { discardWorktreeChanges });
         } else {
-          await api.switchToWorktreeWorkingMode(task.baseDir, task.id, baseBranch ? { baseBranch } : undefined);
+          await api.switchToWorktreeWorkingMode(task.baseDir, task.id, worktreeOptions);
         }
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('Failed to update task:', error);
-      } finally {
-        setIsSwitching(false);
       }
+      setIsSwitching(false);
     },
     [api, task.baseDir, task.id],
   );
@@ -187,32 +187,32 @@ export const TaskGitControls = ({
     [task.workingMode, task.baseDir, task.id, taskGitStatus, api, performSwitch, isWorktreeShared],
   );
 
-  const performMergeAndSwitch = async (targetBranch = taskGitStatus?.worktree?.targetBranch) => {
+  const performMergeAndSwitch = async (targetBranch?: string) => {
+    const resolvedTargetBranch = targetBranch ?? taskGitStatus?.worktree?.targetBranch;
     setShowConfirmLocal(false);
     setIsSwitching(true);
     try {
-      const options: SwitchToLocalOptions = { mergeBeforeSwitch: true, targetBranch };
+      const options: SwitchToLocalOptions = { mergeBeforeSwitch: true, targetBranch: resolvedTargetBranch };
       await api.switchToLocalWorkingMode(task.baseDir, task.id, options);
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Failed to merge and switch:', error);
-    } finally {
-      setIsSwitching(false);
     }
+    setIsSwitching(false);
   };
 
-  const performMergeAndSwitchAll = async (targetBranch = taskGitStatus?.worktree?.targetBranch) => {
+  const performMergeAndSwitchAll = async (targetBranch?: string) => {
+    const resolvedTargetBranch = targetBranch ?? taskGitStatus?.worktree?.targetBranch;
     setShowConfirmLocal(false);
     setIsSwitching(true);
     try {
-      const options: SwitchToLocalOptions = { mergeBeforeSwitch: true, targetBranch, switchAllInWorktree: true };
+      const options: SwitchToLocalOptions = { mergeBeforeSwitch: true, targetBranch: resolvedTargetBranch, switchAllInWorktree: true };
       await api.switchToLocalWorkingMode(task.baseDir, task.id, options);
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Failed to merge and switch all:', error);
-    } finally {
-      setIsSwitching(false);
     }
+    setIsSwitching(false);
   };
 
   const handleLocalTargetConfirm = async (targetBranch: string) => {
@@ -233,14 +233,20 @@ export const TaskGitControls = ({
       await performSwitch('local', true);
       return;
     }
+    const targetBranch = taskGitStatus?.worktree?.targetBranch;
+    let branches: Awaited<ReturnType<typeof api.listBranches>>;
     try {
-      const branches = await api.listBranches(task.baseDir);
-      const targetBranch = taskGitStatus?.worktree?.targetBranch;
-      if (!targetBranch || !branches.some((branch) => !branch.isRemote && branch.name === targetBranch)) {
-        setShowConfirmLocal(false);
-        setShowLocalTargetDialog(true);
-        return;
-      }
+      branches = await api.listBranches(task.baseDir);
+    } catch (error) {
+      showErrorNotification(error instanceof Error ? error.message : String(error));
+      return;
+    }
+    if (!targetBranch || !branches.some((branch) => !branch.isRemote && branch.name === targetBranch)) {
+      setShowConfirmLocal(false);
+      setShowLocalTargetDialog(true);
+      return;
+    }
+    try {
       await handleLocalTargetConfirm(targetBranch);
     } catch (error) {
       showErrorNotification(error instanceof Error ? error.message : String(error));
@@ -268,9 +274,8 @@ export const TaskGitControls = ({
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Failed to switch to worktree with changes:', error);
-    } finally {
-      setIsSwitching(false);
     }
+    setIsSwitching(false);
   };
 
   const getWarningMessage = () => {

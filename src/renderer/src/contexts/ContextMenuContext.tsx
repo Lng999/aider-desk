@@ -83,6 +83,16 @@ export const ContextMenuProvider = ({ children }: Props) => {
   );
 };
 
+const getElementCopyText = (targetElement: Element | null): string => {
+  if (!targetElement) {
+    return '';
+  }
+  if (targetElement instanceof HTMLInputElement || targetElement instanceof HTMLTextAreaElement) {
+    return targetElement.value;
+  }
+  return targetElement.textContent ? targetElement.textContent.trim() : '';
+};
+
 export const useContextMenu = () => {
   const context = useContext(ContextMenuContext);
   const { t } = useTranslation();
@@ -119,29 +129,12 @@ export const useContextMenu = () => {
       options.push({
         label: t('contextMenu.copy'),
         action: async () => {
+          const textToCopy = selectionText || getElementCopyText(targetElement);
+          if (!textToCopy) {
+            return;
+          }
           try {
-            // If there's selected text, copy that
-            if (selectionText) {
-              await api.writeToClipboard(selectionText);
-            } else {
-              // Otherwise, use the stored target element
-              if (targetElement) {
-                let textToCopy = '';
-
-                // Handle input elements
-                if (targetElement instanceof HTMLInputElement || targetElement instanceof HTMLTextAreaElement) {
-                  textToCopy = targetElement.value;
-                }
-                // Handle other elements with text content
-                else if (targetElement.textContent) {
-                  textToCopy = targetElement.textContent.trim();
-                }
-
-                if (textToCopy) {
-                  await api.writeToClipboard(textToCopy);
-                }
-              }
-            }
+            await api.writeToClipboard(textToCopy);
           } catch (error) {
             // eslint-disable-next-line no-console
             console.error('Failed to copy to clipboard:', error);

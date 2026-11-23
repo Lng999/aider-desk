@@ -4,6 +4,15 @@ import { CgSpinner } from 'react-icons/cg';
 import { useTranslation } from 'react-i18next';
 import { clsx } from 'clsx';
 
+const detectDiagramType = (code: string): ReturnType<typeof detectType> => {
+  try {
+    return detectType(code);
+  } catch {
+    // Let mount display syntax errors while retaining the last valid diagram.
+    return null;
+  }
+};
+
 type Props = {
   code: string;
   className?: string;
@@ -35,14 +44,14 @@ export const MermaidDiagram = ({ code, className, isComplete = true }: Props) =>
 
     const renderDiagram = async () => {
       try {
-        let type: ReturnType<typeof detectType> = null;
-        try {
-          type = detectType(code);
-        } catch {
-          // Let mount display syntax errors while retaining the last valid diagram.
-        }
+        const type = detectDiagramType(code);
         await load(type);
-        if (cancelled || !containerRef.current) {
+        if (cancelled) {
+          return;
+        }
+        const container = containerRef.current;
+        if (!container) {
+          setIsLoading(false);
           return;
         }
 
@@ -63,16 +72,15 @@ export const MermaidDiagram = ({ code, className, isComplete = true }: Props) =>
         if (diagramRef.current) {
           diagramRef.current.update(code.trim(), options);
         } else {
-          diagramRef.current = mount(containerRef.current, code.trim(), options);
+          diagramRef.current = mount(container, code.trim(), options);
         }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : String(err));
         }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
+      }
+      if (!cancelled) {
+        setIsLoading(false);
       }
     };
 

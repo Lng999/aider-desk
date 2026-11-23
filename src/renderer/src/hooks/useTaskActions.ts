@@ -11,33 +11,37 @@ type UseTaskActionsParams = {
   baseDir: string;
 };
 
+const loadTaskIntoStore = async (api: ReturnType<typeof useApi>, baseDir: string, taskId: string) => {
+  try {
+    updateTaskState(taskId, { loading: true });
+
+    const { messages: stateMessages, files, todoItems, question, queuedPrompts } = await api.loadTask(baseDir, taskId);
+
+    const messages = convertTaskStateMessages(stateMessages);
+
+    setMessages(taskId, (existingMessages) => mergeTaskMessages(messages, existingMessages));
+    updateTaskState(taskId, {
+      loading: false,
+      loaded: true,
+      contextFiles: files,
+      todoItems: todoItems || [],
+      question,
+      queuedPrompts,
+      lastActiveAt: new Date(),
+    });
+  } catch (error) {
+    updateTaskState(taskId, { loading: false });
+    // eslint-disable-next-line no-console
+    console.error('Failed to load task:', error);
+  }
+};
+
 export const useTaskActions = ({ baseDir }: UseTaskActionsParams) => {
   const api = useApi();
 
   const loadTask = useCallback(
     async (taskId: string) => {
-      try {
-        updateTaskState(taskId, { loading: true });
-
-        const { messages: stateMessages, files, todoItems, question, queuedPrompts } = await api.loadTask(baseDir, taskId);
-
-        const messages = convertTaskStateMessages(stateMessages);
-
-        setMessages(taskId, (existingMessages) => mergeTaskMessages(messages, existingMessages));
-        updateTaskState(taskId, {
-          loading: false,
-          loaded: true,
-          contextFiles: files,
-          todoItems: todoItems || [],
-          question,
-          queuedPrompts,
-          lastActiveAt: new Date(),
-        });
-      } catch (error) {
-        updateTaskState(taskId, { loading: false });
-        // eslint-disable-next-line no-console
-        console.error('Failed to load task:', error);
-      }
+      await loadTaskIntoStore(api, baseDir, taskId);
     },
     [api, baseDir],
   );

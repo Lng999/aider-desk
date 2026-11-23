@@ -315,9 +315,8 @@ export const TaskBar = forwardRef<TaskBarRef, Props>(
         } catch (error) {
           // eslint-disable-next-line no-console
           console.error('Failed to merge worktree:', error);
-        } finally {
-          setIsMerging(false);
         }
+        setIsMerging(false);
       },
       [api, baseDir, task.id, task.worktree],
     );
@@ -334,9 +333,8 @@ export const TaskBar = forwardRef<TaskBarRef, Props>(
         } catch (error) {
           // eslint-disable-next-line no-console
           console.error('Failed to rebase worktree:', error);
-        } finally {
-          setIsMerging(false);
         }
+        setIsMerging(false);
       },
       [api, baseDir, task.id, task.worktree],
     );
@@ -348,9 +346,8 @@ export const TaskBar = forwardRef<TaskBarRef, Props>(
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('Failed to abort rebase:', error);
-      } finally {
-        setIsMerging(false);
       }
+      setIsMerging(false);
     }, [api, baseDir, task.id]);
 
     const handleContinueRebase = useCallback(async () => {
@@ -360,9 +357,8 @@ export const TaskBar = forwardRef<TaskBarRef, Props>(
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('Failed to continue rebase:', error);
-      } finally {
-        setIsMerging(false);
       }
+      setIsMerging(false);
     }, [api, baseDir, task.id]);
 
     const handleResolveConflictsWithAgent = useCallback(async () => {
@@ -372,9 +368,8 @@ export const TaskBar = forwardRef<TaskBarRef, Props>(
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('Failed to resolve conflicts with agent:', error);
-      } finally {
-        setIsMerging(false);
       }
+      setIsMerging(false);
     }, [api, baseDir, task.id]);
 
     const handleOnlyUncommitted = useCallback(async () => {
@@ -388,9 +383,8 @@ export const TaskBar = forwardRef<TaskBarRef, Props>(
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('Failed to apply uncommitted changes:', error);
-      } finally {
-        setIsMerging(false);
       }
+      setIsMerging(false);
     }, [api, baseDir, task.id, task.worktree]);
 
     const handleRevert = useCallback(async () => {
@@ -400,9 +394,8 @@ export const TaskBar = forwardRef<TaskBarRef, Props>(
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('Failed to revert merge:', error);
-      } finally {
-        setIsMerging(false);
       }
+      setIsMerging(false);
     }, [api, baseDir, task.id]);
 
     const handleRenameBranch = useCallback(

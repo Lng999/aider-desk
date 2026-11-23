@@ -66,15 +66,15 @@ export const MessageActions = ({ actions, baseDir, taskId, onInterrupt, removeAc
     const checkpointId = data && typeof data === 'object' && !Array.isArray(data) && typeof data.checkpointId === 'string' ? data.checkpointId : undefined;
     setRestoreFailed(false);
     setIsExecuted(true);
+    let restored = false;
     try {
-      const restored = await api.undoContextChange(baseDir, taskId, checkpointId);
-      if (restored) {
-        removeActionId?.('undoContextChange');
-      } else {
-        setRestoreFailed(true);
-        setIsExecuted(false);
-      }
+      restored = await api.undoContextChange(baseDir, taskId, checkpointId);
     } catch {
+      restored = false;
+    }
+    if (restored) {
+      removeActionId?.('undoContextChange');
+    } else {
       setRestoreFailed(true);
       setIsExecuted(false);
     }
@@ -89,9 +89,8 @@ export const MessageActions = ({ actions, baseDir, taskId, onInterrupt, removeAc
       await api.forkTaskFromCheckpoint(baseDir, taskId, data.checkpointId);
     } catch {
       showErrorNotification(t('errors.forkTaskFailed'));
-    } finally {
-      setIsForking(false);
     }
+    setIsForking(false);
   };
 
   const handlers: Record<string, (action: LogAction) => void> = {

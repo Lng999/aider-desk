@@ -47,31 +47,35 @@ export const ModelProviderProvider = ({ children }: Props) => {
   const loadModels = useCallback(
     async (reload = false) => {
       setModelsLoading(true);
+      let loaded: Awaited<ReturnType<typeof api.getProviderModels>> | null = null;
       try {
-        const { models, errors } = await api.getProviderModels(reload);
-        setModels(Array.isArray(models) ? models : []);
-        setErrors(errors || {});
+        loaded = await api.getProviderModels(reload);
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('Failed to load models:', error);
-      } finally {
-        setModelsLoading(false);
       }
+      if (loaded) {
+        setModels(Array.isArray(loaded.models) ? loaded.models : []);
+        setErrors(loaded.errors || {});
+      }
+      setModelsLoading(false);
     },
     [api],
   );
 
   const loadProviders = useCallback(async () => {
+    setProvidersLoading(true);
+    let data: ProviderProfile[] | null = null;
     try {
-      setProvidersLoading(true);
-      const data = await api.getProviders();
-      setProviders(Array.isArray(data) ? data : []);
+      data = await api.getProviders();
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Failed to load providers:', error);
-    } finally {
-      setProvidersLoading(false);
     }
+    if (data !== null) {
+      setProviders(Array.isArray(data) ? data : []);
+    }
+    setProvidersLoading(false);
   }, [api]);
 
   const refresh = useCallback(() => {

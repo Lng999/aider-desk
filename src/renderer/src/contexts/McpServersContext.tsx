@@ -40,9 +40,8 @@ export const McpServersProvider = ({ children }: McpServersProviderProps) => {
       setProjectServers(result.projectServers);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load MCP servers');
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }, [api]);
 
   const getScopedServers = useCallback(
