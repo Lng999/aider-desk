@@ -18,6 +18,7 @@ import {
   GitAheadCommits,
   UncommittedFiles,
 } from '@common/types';
+import { normalizeBaseDir } from '@common/utils';
 // @ts-expect-error istextorbinary library does not provide TypeScript definitions
 import { isBinary } from 'istextorbinary';
 import { simpleGit } from 'simple-git';
@@ -77,6 +78,10 @@ const REMOTE_FETCH_THROTTLE_MS = 60_000;
 const isAbortError = (error: unknown): boolean => {
   return error instanceof Error && (error.name === 'AbortError' || (error as NodeJS.ErrnoException).code === 'ABORT_ERR');
 };
+
+// `git worktree list` reports forward-slash paths on Windows (C:/...), while worktree paths are built with path.join (C:\...)
+const normalizeWorktreePath = (worktreePath: string): string => normalizeBaseDir(path.normalize(worktreePath));
+const isSamePath = (a: string, b: string): boolean => normalizeWorktreePath(a) === normalizeWorktreePath(b);
 
 export class GitManager {
   private commitCancelControllers = new Map<string, AbortController>();
@@ -2122,11 +2127,11 @@ export class GitManager {
       const taskWorktreePath = this.getWorktreePath(projectPath, taskId);
 
       // Find worktree that matches our task's worktree path
-      const taskWorktree = worktrees.find((w) => w.path === taskWorktreePath);
+      const taskWorktree = worktrees.find((w) => isSamePath(w.path, taskWorktreePath));
 
       // A prunable worktree has a missing or invalid directory (stale registration), treat it as absent
       if (taskWorktree && !taskWorktree.prunable) {
-        return taskWorktree;
+        return { ...taskWorktree, path: taskWorktreePath };
       }
 
       // If no worktree exists for this task, return null
@@ -3911,7 +3916,7 @@ export class GitManager {
       worktrees,
     });
     for (const worktree of worktrees) {
-      if (worktree.path.startsWith(path.join(projectDir, AIDER_DESK_TASKS_DIR)) && worktree.prunable) {
+      if (normalizeWorktreePath(worktree.path).startsWith(normalizeWorktreePath(path.join(projectDir, AIDER_DESK_TASKS_DIR))) && worktree.prunable) {
         try {
           logger.debug(`Pruning deleted worktree: ${worktree.path}`);
           await execWithShellPath(`git worktree remove ${worktree.path}`, {
