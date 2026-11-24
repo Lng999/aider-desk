@@ -12,8 +12,8 @@ import {
 import { EditorView, keymap } from '@codemirror/view';
 import { AIDER_MODES, Mode, PromptBehavior, QueuedPromptData, QuestionData, SuggestionMode } from '@common/types';
 import { githubDarkInit } from '@uiw/codemirror-theme-github';
-import CodeMirror, { Annotation, Prec, type Extension, type ReactCodeMirrorRef } from '@uiw/react-codemirror';
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import CodeMirror, { Prec, type Extension } from '@uiw/react-codemirror';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react';
 import { useDebounce } from '@reactuses/core';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +27,9 @@ import { getSubagentId } from '@common/agent';
 import { QueuedPromptsList } from './QueuedPromptsList';
 import { usePromptFieldText } from './usePromptFieldText';
 import { useTypingPlaceholder } from './useTypingPlaceholder';
+import { useInitialEditorText } from './useInitialEditorText';
+import { useVoiceTranscriptionText } from './useVoiceTranscriptionText';
+import { usePromptFieldEditor } from './usePromptFieldEditor';
 import { wordCompletions } from './wordCompletions';
 import { acceptPathSegment } from './acceptPathSegment';
 
@@ -42,7 +45,10 @@ import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { AudioAnalyzer } from '@/components/PromptField/AudioAnalyzer';
 import { useResponsive } from '@/hooks/useResponsive';
 
-const External = Annotation.define<boolean>();
+const loadVimExtension = async (): Promise<Extension> => {
+  const module = await import('@replit/codemirror-vim');
+  return module.vim();
+};
 
 const COMMANDS = [
   '/code',
@@ -223,16 +229,14 @@ export const PromptField = forwardRef<PromptFieldRef, Props>(
     const { t } = useTranslation();
     const { isMobile } = useResponsive();
     const queuedPrompts = useTaskQueuedPrompts(taskId);
+    const { editorRef, dispatchEditorText, registerEditor } = usePromptFieldEditor();
     const [text, setText] = useState('');
     const [pastedImages, setPastedImages] = useState<string[]>([]);
     const debouncedText = useDebounce(text, 100);
-    const { setText: setSavedText } = usePromptFieldText(baseDir, taskId, (text) => {
-      const view = editorRef.current?.view;
-      view?.dispatch({
-        changes: { from: 0, to: view.state.doc.toString().length, insert: text },
-        annotations: [External.of(true)],
-      });
-      setText(text);
+
+    const { setText: setSavedText } = usePromptFieldText(baseDir, taskId, (loadedText) => {
+      dispatchEditorText(loadedText);
+      setText(loadedText);
     });
     const [historyMenuVisible, setHistoryMenuVisible] = useState(false);
     const [highlightedHistoryItemIndex, setHighlightedHistoryItemIndex] = useState(0);
@@ -243,7 +247,6 @@ export const PromptField = forwardRef<PromptFieldRef, Props>(
       command: string;
       args?: string;
     } | null>(null);
-    const editorRef = useRef<ReactCodeMirrorRef>(null);
     const placeholders = useMemo(() => Array.from({ length: PLACEHOLDER_COUNT }, (_, i) => t(`promptField.placeholders.${i}`)), [t]);
     const questionPlaceholder = question ? t('promptField.questionPlaceholder') : null;
     const staticPlaceholder = questionPlaceholder ?? (hasMessages ? t('promptField.chatPlaceholder') : null);
@@ -277,38 +280,16 @@ export const PromptField = forwardRef<PromptFieldRef, Props>(
       mediaDevicesAvailable,
       mediaStream,
     } = useAudioRecorder();
-    const [textBeforeRecording, setTextBeforeRecording] = useState('');
-
     const setTextWithDispatch = useCallback(
       (newText: string) => {
-        const view = editorRef.current?.view;
-        view?.dispatch({
-          changes: { from: 0, to: view.state.doc.toString().length, insert: newText },
-          annotations: [External.of(true)],
-        });
+        dispatchEditorText(newText);
         setText(newText);
         setSavedText(newText);
       },
-      [setText, setSavedText],
+      [dispatchEditorText, setSavedText],
     );
 
-    useEffect(() => {
-      if (text) {
-        // we need to set the text when the component mounts and the text is not empty (e.g. Activity use case)
-        requestAnimationFrame(() => {
-          const view = editorRef.current?.view;
-          view?.dispatch({
-            changes: {
-              from: 0,
-              to: view.state.doc.toString().length,
-              insert: text,
-            },
-            annotations: [External.of(true)],
-          });
-        });
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    useInitialEditorText(text, dispatchEditorText);
 
     useEffect(() => {
       if (voiceError) {
@@ -316,26 +297,14 @@ export const PromptField = forwardRef<PromptFieldRef, Props>(
       }
     }, [voiceError]);
 
-    useEffect(() => {
-      if (isRecording) {
-        setTextBeforeRecording(text);
-      } else if (transcription) {
-        // When recording stops, we reset after a short delay or immediately?
-        // We want to keep the text.
-        // We just need to reset the recorder state for next time.
-        resetTranscription();
-        setTextBeforeRecording('');
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isRecording]);
-
-    useEffect(() => {
-      if ((isRecording || isProcessing) && transcription) {
-        const separator = textBeforeRecording && !textBeforeRecording.endsWith(' ') ? ' ' : '';
-        setTextWithDispatch(textBeforeRecording + separator + transcription);
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [transcription, isRecording, isProcessing, textBeforeRecording]);
+    useVoiceTranscriptionText({
+      text,
+      isRecording,
+      isProcessing,
+      transcription,
+      resetTranscription,
+      setText: setTextWithDispatch,
+    });
 
     const completionSource = useCallback(
       async (context: CompletionContext): Promise<CompletionResult | null> => {
@@ -1209,9 +1178,7 @@ export const PromptField = forwardRef<PromptFieldRef, Props>(
 
     useEffect(() => {
       if (promptBehavior.useVimBindings && !vimExtension) {
-        void import('@replit/codemirror-vim').then((module) => {
-          setVimExtension(module.vim());
-        });
+        void loadVimExtension().then(setVimExtension);
       }
     }, [promptBehavior.useVimBindings, vimExtension]);
 
@@ -1355,9 +1322,7 @@ export const PromptField = forwardRef<PromptFieldRef, Props>(
         )}
         <div className="relative flex-shrink-0">
           <CodeMirror
-            ref={useCallback((instance: ReactCodeMirrorRef) => {
-              editorRef.current = instance;
-            }, [])}
+            ref={registerEditor}
             onChange={onChange}
             onBlur={handleBlur}
             editable={!disabled}
