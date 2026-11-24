@@ -12,7 +12,7 @@
         "ui",
         "commands"
       ],
-      "installCount": 0
+      "installCount": 1
     },
     {
       "id": "custom-task-statuses",
@@ -51,7 +51,7 @@
       "capabilities": [
         "providers"
       ],
-      "installCount": 12
+      "installCount": 13
     },
     {
       "id": "jev",
@@ -125,7 +125,7 @@
         "tools",
         "ui"
       ],
-      "installCount": 59
+      "installCount": 61
     },
     {
       "id": "theme",
@@ -147,7 +147,7 @@
       "capabilities": [
         "modes"
       ],
-      "installCount": 143
+      "installCount": 144
     },
     {
       "id": "protected-paths",
@@ -159,7 +159,7 @@
       "capabilities": [
         "security"
       ],
-      "installCount": 62
+      "installCount": 63
     },
     {
       "id": "permission-gate",
@@ -205,7 +205,7 @@
       "capabilities": [
         "context"
       ],
-      "installCount": 89
+      "installCount": 91
     },
     {
       "id": "learn",
@@ -218,7 +218,7 @@
         "commands",
         "tools"
       ],
-      "installCount": 118
+      "installCount": 119
     },
     {
       "id": "legacy-system-prompt",
@@ -275,7 +275,7 @@
         "linux",
         "macos"
       ],
-      "installCount": 40
+      "installCount": 41
     },
     {
       "id": "redact-secrets",
@@ -287,7 +287,7 @@
       "capabilities": [
         "security"
       ],
-      "installCount": 36
+      "installCount": 37
     },
     {
       "id": "chunkhound-search",
@@ -324,7 +324,7 @@
         "context",
         "commands"
       ],
-      "installCount": 94
+      "installCount": 95
     },
     {
       "id": "context-autocompletion-words",
@@ -336,7 +336,7 @@
       "capabilities": [
         "context"
       ],
-      "installCount": 32
+      "installCount": 33
     },
     {
       "id": "lsp",
@@ -349,7 +349,7 @@
         "tools",
         "code-intelligence"
       ],
-      "installCount": 103
+      "installCount": 104
     },
     {
       "id": "plannotator",
@@ -484,7 +484,7 @@
       "capabilities": [
         "metrics"
       ],
-      "installCount": 131
+      "installCount": 134
     },
     {
       "id": "verifier",
@@ -586,7 +586,7 @@
         "events",
         "ui"
       ],
-      "installCount": 48
+      "installCount": 49
     },
     {
       "id": "codegraph",
@@ -611,7 +611,7 @@
       "capabilities": [
         "ui"
       ],
-      "installCount": 63
+      "installCount": 64
     },
     {
       "id": "doom",
@@ -674,7 +674,7 @@
       "capabilities": [
         "ui"
       ],
-      "installCount": 65
+      "installCount": 66
     },
     {
       "id": "skill-gallery",
@@ -686,7 +686,7 @@
       "capabilities": [
         "ui"
       ],
-      "installCount": 195
+      "installCount": 196
     },
     {
       "id": "task-scheduler",
@@ -712,7 +712,7 @@
       "capabilities": [
         "ui"
       ],
-      "installCount": 175
+      "installCount": 177
     },
     {
       "id": "dbx",
@@ -737,7 +737,7 @@
         "ui",
         "commands"
       ],
-      "installCount": 28
+      "installCount": 29
     }
   ]
 }
