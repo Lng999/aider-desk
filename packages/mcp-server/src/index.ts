@@ -315,8 +315,9 @@ server.tool(
 
 // Start the server
 export async function main() {
+  // stdout carries the JSON-RPC messages of the stdio transport, so logs go to stderr
   // eslint-disable-next-line no-console
-  console.log('Starting AiderDesk MCP server...');
+  console.error('Starting AiderDesk MCP server...');
   try {
     const transport = new StdioServerTransport();
     await server.connect(transport);

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import axios from 'axios';
 
-import { server } from '../index';
+import { main, server } from '../index';
 
 vi.mock('axios');
 
@@ -230,5 +230,24 @@ describe('AiderDesk MCP Server', () => {
     const result = await getTool('run_prompt').handler({ taskId: 'task-1', prompt: 'hello', mode: 'ask' });
 
     expect(result.content[0].text).toBe(JSON.stringify({ error: 'Not found' }));
+  });
+
+  // --- Startup ---
+
+  it('main should not write log output to stdout, which carries the stdio transport', async () => {
+    const connectSpy = vi.spyOn(server, 'connect').mockResolvedValueOnce();
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      await main();
+
+      expect(connectSpy).toHaveBeenCalledOnce();
+      expect(logSpy).not.toHaveBeenCalled();
+    } finally {
+      connectSpy.mockRestore();
+      logSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
   });
 });
