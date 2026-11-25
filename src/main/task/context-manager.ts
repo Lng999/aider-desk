@@ -860,6 +860,7 @@ export class ContextManager {
   }
 
   async load(removeMissingFiles = true): Promise<void> {
+    let loadFailed = false;
     try {
       if (this.loaded) {
         return;
@@ -870,21 +871,32 @@ export class ContextManager {
         return;
       }
 
-      this.loadPromise = this.loadInternal(removeMissingFiles);
-      await this.loadPromise;
-      this.loadPromise = null;
+      const loadPromise = this.loadInternal(removeMissingFiles);
+      this.loadPromise = loadPromise;
+      try {
+        await loadPromise;
+      } finally {
+        // a failed load must not stay cached, so the next load reads the disk again
+        if (this.loadPromise === loadPromise) {
+          this.loadPromise = null;
+        }
+      }
 
       logger.debug(`Task context loaded from ${this.storagePath}`, {
         taskId: this.taskId,
       });
     } catch (error) {
+      loadFailed = true;
       logger.error('Failed to load task context:', {
         error,
         taskId: this.taskId,
       });
       throw error;
     } finally {
-      this.enableAutosave();
+      // autosave would overwrite the context on disk with the state that failed to load
+      if (!loadFailed) {
+        this.enableAutosave();
+      }
     }
   }
 
