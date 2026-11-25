@@ -148,6 +148,8 @@ Do not use escape characters \\ in the string like \\n or \\" and others. Do not
             encoding: 'utf8',
             signal: abortSignal,
           });
+          // Files that consistently use CRLF are written back with CRLF after the edit
+          const usesCrlf = fileContent.includes('\r\n') && !/(^|[^\r])\n/.test(fileContent);
           // Normalize Windows line endings to Unix for consistent matching
           fileContent = fileContent.replace(/\r\n/g, '\n');
           let modifiedContent: string;
@@ -178,6 +180,10 @@ Do not use escape characters \\ in the string like \\n or \\" and others. Do not
                 : 'When you try again make sure to exactly match content, character for character, including all comments, docstrings, etc.';
 
             return `Warning: Given 'searchTerm' was not found in the file. Content remains the same. ${improveInfo}`;
+          }
+
+          if (usesCrlf) {
+            modifiedContent = modifiedContent.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
           }
 
           await fs.writeFile(absolutePath, modifiedContent, {

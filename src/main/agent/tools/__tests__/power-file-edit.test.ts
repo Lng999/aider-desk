@@ -583,4 +583,98 @@ const c = \`updated\`;
 `);
     });
   });
+
+  describe('line endings', () => {
+    it('should keep CRLF line endings of a CRLF file', async () => {
+      const filePath = 'crlf.ts';
+      const fullPath = path.join(tempDir, filePath);
+      await fs.writeFile(fullPath, 'const a = 1;\r\nconst b = 2;\r\nconst c = 3;\r\n', 'utf8');
+
+      const fileEditTool = getFileEditTool();
+
+      const result = await fileEditTool.execute(
+        {
+          filePath,
+          searchTerm: 'const b = 2;\nconst c = 3;',
+          replacementText: 'const b = 20;\nconst c = 30;',
+          isRegex: false,
+          replaceAll: false,
+        },
+        { toolCallId: 'tool-call-135' },
+      );
+
+      expect(result).toContain('Successfully edited');
+      const editedContent = await fs.readFile(fullPath, 'utf8');
+      expect(editedContent).toBe('const a = 1;\r\nconst b = 20;\r\nconst c = 30;\r\n');
+    });
+
+    it('should keep CRLF line endings when editing with a regex', async () => {
+      const filePath = 'crlf-regex.ts';
+      const fullPath = path.join(tempDir, filePath);
+      await fs.writeFile(fullPath, 'const a = 1;\r\nconst b = 2;\r\n', 'utf8');
+
+      const fileEditTool = getFileEditTool();
+
+      const result = await fileEditTool.execute(
+        {
+          filePath,
+          searchTerm: 'b = \\d+;',
+          replacementText: 'b = 3;\nconst d = 4;',
+          isRegex: true,
+          replaceAll: false,
+        },
+        { toolCallId: 'tool-call-136' },
+      );
+
+      expect(result).toContain('Successfully edited');
+      const editedContent = await fs.readFile(fullPath, 'utf8');
+      expect(editedContent).toBe('const a = 1;\r\nconst b = 3;\r\nconst d = 4;\r\n');
+    });
+
+    it('should keep LF line endings of an LF file', async () => {
+      const filePath = 'lf.ts';
+      const fullPath = path.join(tempDir, filePath);
+      await fs.writeFile(fullPath, 'const a = 1;\nconst b = 2;\n', 'utf8');
+
+      const fileEditTool = getFileEditTool();
+
+      const result = await fileEditTool.execute(
+        {
+          filePath,
+          searchTerm: 'const b = 2;',
+          replacementText: 'const b = 20;\nconst c = 30;',
+          isRegex: false,
+          replaceAll: false,
+        },
+        { toolCallId: 'tool-call-137' },
+      );
+
+      expect(result).toContain('Successfully edited');
+      const editedContent = await fs.readFile(fullPath, 'utf8');
+      expect(editedContent).toBe('const a = 1;\nconst b = 20;\nconst c = 30;\n');
+    });
+
+    it('should not convert a file with mixed line endings to CRLF', async () => {
+      const filePath = 'mixed.ts';
+      const fullPath = path.join(tempDir, filePath);
+      await fs.writeFile(fullPath, 'const a = 1;\r\nconst b = 2;\nconst c = 3;\r\n', 'utf8');
+
+      const fileEditTool = getFileEditTool();
+
+      const result = await fileEditTool.execute(
+        {
+          filePath,
+          searchTerm: 'const c = 3;',
+          replacementText: 'const c = 30;',
+          isRegex: false,
+          replaceAll: false,
+        },
+        { toolCallId: 'tool-call-138' },
+      );
+
+      expect(result).toContain('Successfully edited');
+      const editedContent = await fs.readFile(fullPath, 'utf8');
+      expect(editedContent).toBe('const a = 1;\nconst b = 2;\nconst c = 30;\n');
+    });
+  });
 });
